@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shop_app/global_variables.dart';
-import 'package:shop_app/product_card.dart';
-import 'package:shop_app/product_details_page.dart';
+import 'package:shop_app/widgets/global_variables.dart';
+import 'package:shop_app/widgets/product_card.dart';
+import 'package:shop_app/pages/product_details_page.dart';
 
 class ProductList extends StatefulWidget {
   const ProductList({super.key});
@@ -11,17 +11,43 @@ class ProductList extends StatefulWidget {
 }
 
 class _ProductListState extends State<ProductList> {
+  final List<String> filters = const ['All', 'Adidas', 'Nike', 'Bata'];
+  late String selected_filter;
+  String search_query = '';
+
   @override
   void initState() {
     super.initState();
     selected_filter = filters[0];
   }
 
-  final List<String> filters = const ['All', 'Adidas', 'Nike', 'Bata'];
-  late String selected_filter;
+  // Search aur filter ke liye products ko filter karne ka function
+  List<Map<String, dynamic>> getFilteredProducts() {
+    List<Map<String, dynamic>> filtered_products = products;
+
+    // Pehle search filter apply karo
+    if (search_query.isNotEmpty) {
+      filtered_products = filtered_products.where((product) {
+        return product['title'].toString().toLowerCase().contains(
+          search_query.toLowerCase(),
+        );
+      }).toList();
+    }
+
+    // Phir company filter apply karo
+    if (selected_filter != 'All') {
+      filtered_products = filtered_products.where((product) {
+        return product['company'].toString() == selected_filter;
+      }).toList();
+    }
+
+    return filtered_products;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filtered_products = getFilteredProducts();
+
     return SafeArea(
       child: Column(
         children: [
@@ -36,9 +62,13 @@ class _ProductListState extends State<ProductList> {
               ),
               Expanded(
                 child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      search_query = value;
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Search',
-
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.horizontal(
                         left: Radius.circular(30),
@@ -53,7 +83,6 @@ class _ProductListState extends State<ProductList> {
                       ),
                       borderSide: BorderSide(color: Colors.grey[600]!),
                     ),
-
                     prefixIcon: Icon(
                       Icons.search_rounded,
                       color: Colors.grey[600],
@@ -105,29 +134,38 @@ class _ProductListState extends State<ProductList> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) {
-                          return ProductDetailsPage(product: product);
+            child: filtered_products.isEmpty
+                ? Center(
+                    child: Text(
+                      'No products found',
+                      style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filtered_products.length,
+                    itemBuilder: (context, index) {
+                      final product = filtered_products[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return ProductDetailsPage(product: product);
+                              },
+                            ),
+                          );
                         },
-                      ),
-                    );
-                  },
-                  child: ProductCard(
-                    title: product['title'].toString(),
-                    price: product['price'] as double,
-                    image: product['imageUrl'].toString(),
-                    bgcolor: index.isEven ? Colors.red[50] : Colors.blue[50],
+                        child: ProductCard(
+                          title: product['title'].toString(),
+                          price: product['price'] as double,
+                          image: product['imageUrl'].toString(),
+                          bgcolor: index.isEven
+                              ? Colors.red[50]
+                              : Colors.blue[50],
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
